@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "devops-capstone-app-image:latest"
+        IMAGE_NAME = "sathiya91/jenkin-image:latest"
     }
 
     stages {
