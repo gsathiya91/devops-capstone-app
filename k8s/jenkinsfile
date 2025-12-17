@@ -2,57 +2,80 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "sathiya91/jenkin-image:latest"
+        DOCKER_IMAGE = "sathiya91/jenkin-image:latest"
+        TARGET_EC2_USER = "ubuntu"
+        TARGET_EC2_HOST = "65.0.108.13"
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
-                    url:  'https://github.com/gsathiya91/devops-capstone-app.git'
+                    url: 'https://github.com/gsathiya91/devops-capstone-app.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh "docker build -t ${IMAGE_NAME} ."
-                }
+                sh '''
+                  docker build -t $DOCKER_IMAGE .
+                '''
             }
         }
 
         stage('Login to DockerHub') {
             steps {
-                script {
-                    withCredentials([usernamePassword(
-    credentialsId: 'dockerhub_credentials',
-    usernameVariable: 'DOCKER_USER',
-    passwordVariable: 'DOCKER_PASS'
-)]) {
-    sh '''
-    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-    '''
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub_credentials',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
+                    sh '''
+                      echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    '''
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                sh '''
+                  docker push $DOCKER_IMAGE
+                '''
+            }
+        }
+
+        stage('Deploy to EC2') {
+    steps {
+        withCredentials([
+            sshUserPrivateKey(
+                credentialsId: 'ec2-ssh-credentials',
+                keyFileVariable: 'SSH_KEY',
+                usernameVariable: 'SSH_USER'
+            )
+        ]) {
+            sh """
+              ssh -o StrictHostKeyChecking=no -i "\$SSH_KEY" \$SSH_USER@${TARGET_EC2_HOST} \
+              "docker pull ${DOCKER_IMAGE} && \
+               docker stop my_container || true && \
+               docker rm my_container || true && \
+               docker run -d \
+                 --restart unless-stopped \
+                 --name my_container \
+                 -p 80:80 \
+                 ${DOCKER_IMAGE}"
+            """
+        }
+    }
 }
-
-                }
-            }
-        }
-
-        stage('Push to DockerHub') {
+        stage('Cleanup Local Images') {
             steps {
-                script {
-                    sh "docker push ${IMAGE_NAME}"
-                }
-            }
-        }
-
-       stage('Deploy on Private EC2') { steps { withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-credentials', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) { sh """ ssh -o StrictHostKeyChecking=no -i $SSH_KEY $SSH_USER@${TARGET_SERVER} ' aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}; docker pull ${IMAGE_NAME}; docker stop ${APP_NAME} || true; docker rm ${APP_NAME} || true; docker run -d --restart unless-stopped  --restart unless-stopped --name my_container -p 80:80 ${IMAGE_NAME}"  """ } } }
-
-        stage('Cleanup') {
-            steps {
-                script {
-                    sh "docker rmi ${IMAGE_NAME}"
-                }
+                sh '''
+                  docker rmi $DOCKER_IMAGE || true
+                '''
             }
         }
     }
