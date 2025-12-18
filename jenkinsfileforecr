@@ -35,8 +35,8 @@ pipeline {
         stage('Push to ECR') {
             steps {
                 sh """
-                    aws ecr get-login-password --region ${AWS_REGION} \
-                        | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                    aws ecr get-login-password --region ${AWS_REGION} |
+                    docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
                     aws ecr describe-repositories \
                         --repository-names ${ECR_REPO} \
@@ -86,6 +86,50 @@ pipeline {
                 '''
             }
         }
+    }
 
+    post {
+        success {
+            emailext(
+                subject: "✅ Jenkins Build SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    <html>
+                      <body>
+                        <h2 style="color:green;">Build Successful</h2>
+                        <p><b>Job:</b> ${env.JOB_NAME}</p>
+                        <p><b>Build Number:</b> ${env.BUILD_NUMBER}</p>
+                        <p><b>Status:</b> SUCCESS</p>
+                        <p><b>Build URL:</b>
+                          <a href="${env.BUILD_URL}">${env.BUILD_URL}</a>
+                        </p>
+                      </body>
+                    </html>
+                """,
+                to: "sathiyajayabal06@gmail.com",
+                mimeType: 'text/html'
+            )
+        }
+
+        failure {
+            emailext(
+                subject: "❌ Jenkins Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+                    <html>
+                      <body>
+                        <h2 style="color:red;">Build Failed</h2>
+                        <p><b>Job:</b> ${env.JOB_NAME}</p>
+                        <p><b>Build Number:</b> ${env.BUILD_NUMBER}</p>
+                        <p><b>Status:</b> FAILURE</p>
+                        <p><b>Build URL:</b>
+                          <a href="${env.BUILD_URL}">${env.BUILD_URL}</a>
+                        </p>
+                        <p>Please check the console logs for details.</p>
+                      </body>
+                    </html>
+                """,
+                to: "sathiyajayabal06@gmail.com",
+                mimeType: 'text/html'
+            )
+        }
     }
 }
