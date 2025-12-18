@@ -14,7 +14,9 @@ pipeline {
 
         TARGET_SERVER = "3.7.68.131"
     }
-
+     triggers {
+        githubPush()
+    }
     stages {
 
         stage('Checkout Code') {
