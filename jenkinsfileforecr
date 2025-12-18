@@ -54,7 +54,7 @@ pipeline {
             steps {
                 withCredentials([
                     sshUserPrivateKey(
-                        credentialsId: 'private-ec2-key',
+                        credentialsId: 'ec2-ssh-credentials',
                         keyFileVariable: 'SSH_KEY',
                         usernameVariable: 'SSH_USER'
                     )
