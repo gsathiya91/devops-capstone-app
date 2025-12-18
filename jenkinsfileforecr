@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         AWS_REGION    = 'ap-south-1'
-        AWS_ACCOUNT   = '5460003211837'
+        AWS_ACCOUNT   = '460003211837'
         ECR_REGISTRY  = "${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         ECR_REPO      = "imagewithjenkins"
         IMAGE_TAG     = "${BUILD_NUMBER}"
